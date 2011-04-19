@@ -1,6 +1,6 @@
-<a href="http://github.com/visionmedia/connect-redis"><img alt="Fork me on GitHub" id="ribbon" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"></a><html>
+<a href="http://github.com/triAGENS/connect-sessionvoc"><img alt="Fork me on GitHub" id="ribbon" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"></a><html>
 	<head>
-		<title>Connect Redis</title>
+		<title>Connect SessionVOC</title>
 		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
 		<style>body {
     margin: 0;
@@ -108,125 +108,409 @@ code .this { color: #19469D; }</style>
 		</script>
 	</head>
 	<body>
-<table id="source"><tbody><tr><td><h1>Connect Redis</h1><p>Redis session store for connect backed by <a href="http://github.com/mranney/node_redis">node_redis</a>.</p></td><td></td></tr><tr class="filename"><td><h2 id="lib/connect-redis.js"><a href="#">connect-redis</a></h2></td><td>lib/connect-redis.js</td></tr><tr class="code">
+<table id="source"><tbody><tr><td><h1>Connect SessionVOC</h1><p>secure, reliable, external session database SessionVOC</p></td><td></td></tr><tr class="filename"><td><h2 id="lib/connect-sessionvoc.js"><a href="#">connect-sessionvoc</a></h2></td><td>lib/connect-sessionvoc.js</td></tr><tr class="code">
+<td class="docs">
+<hr></hr>
+
+<hr></hr>
+</td>
+<td class="code">
+
+</td>
+</tr>
+<tr class="code">
 <td class="docs">
 <p>Module dependencies.
  </p>
 </td>
 <td class="code">
-<pre><code><span class="keyword">var</span> <span class="class">Store</span> = <span class="variable">require</span>(<span class="string">'connect'</span>).<span class="variable">session</span>.<span class="class">Store</span>,
-    <span class="variable">redis</span> = <span class="variable">require</span>(<span class="string">'./redis'</span>);</code></pre>
+<pre><code><span class="keyword">var</span> <span class="variable">connect</span> = <span class="variable">require</span>(<span class="string">'connect'</span>),
+    <span class="class">Session</span> = <span class="variable">connect</span>.<span class="variable">session</span>.<span class="class">Session</span>,
+    <span class="class">Store</span> = <span class="variable">connect</span>.<span class="variable">session</span>.<span class="class">Store</span>,
+    <span class="variable">utils</span> = <span class="variable">connect</span>.<span class="variable">utils</span>,
+    <span class="variable">http</span> = <span class="variable">require</span>(<span class="string">'http'</span>),
+    <span class="variable">sys</span> = <span class="variable">require</span>(<span class="string">'sys'</span>);</code></pre>
 </td>
 </tr>
 <tr class="code">
 <td class="docs">
-<p>Initialize RedisStore with the given <code>options</code>.</p>
+<p>Exports.
+ </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">exports</span> = <span class="variable">module</span>.<span class="variable">exports</span>;</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Exports the constructors.
+ </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">exports</span>.<span class="class">SessionVocStore</span> = <span class="class">SessionVocStore</span>;</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Exports the debugging flag.
+ </p>
+</td>
+<td class="code">
+<pre><code><span class="variable">exports</span>.<span class="variable">debug</span> = <span class="variable">true</span>;</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<hr></hr>
+
+<hr></hr>
+</td>
+<td class="code">
+
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Client-server communication methods.
+ </p>
+</td>
+<td class="code">
+<pre><code><span class="keyword">var</span> <span class="class">COMM_NONE</span> = <span class="number integer">0</span>,
+    <span class="class">COMM_SIMPLE</span> = <span class="number integer">1</span>,
+    <span class="class">COMM_CHALLENGE_RESPONSE</span> = <span class="number integer">2</span>;</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<hr></hr>
+
+<hr></hr>
+</td>
+<td class="code">
+
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Initializes a new <code>SessionVocStore</code>. You can define an options array to specifiy
+the host and port.</p>
 
 <h2></h2>
 
 <ul><li><p><strong>param</strong>: <em>Object</em>  options</p></li><li><p><strong>api</strong>: <em>public</em></p></li></ul>
 </td>
 <td class="code">
-<pre><code><span class="keyword">var</span> <span class="class">RedisStore</span> = <span class="variable">module</span>.<span class="variable">exports</span> = <span class="keyword">function</span> <span class="class">RedisStore</span>(<span class="variable">options</span>) {
-    <span class="variable">options</span> = <span class="variable">options</span> || {};
-    <span class="class">Store</span>.<span class="variable">call</span>(<span class="this">this</span>, <span class="variable">options</span>);
-    <span class="this">this</span>.<span class="variable">client</span> = <span class="keyword">new</span> <span class="variable">redis</span>.<span class="variable">createClient</span>(<span class="variable">options</span>.<span class="variable">port</span>, <span class="variable">options</span>.<span class="variable">host</span>, <span class="variable">options</span>);
+<pre><code><span class="keyword">function</span> <span class="class">SessionVocStore</span> (<span class="variable">options</span>) {
+  <span class="class">Object</span>.<span class="variable">defineProperty</span>(<span class="this">this</span>, <span class="string">'host'</span>, { <span class="variable">value</span>: (<span class="variable">options</span> &<span class="variable">amp</span>;&<span class="variable">amp</span>; <span class="variable">options</span>.<span class="variable">host</span>) || <span class="string">'localhost'</span> });
+  <span class="class">Object</span>.<span class="variable">defineProperty</span>(<span class="this">this</span>, <span class="string">'port'</span>, { <span class="variable">value</span>: (<span class="variable">options</span> &<span class="variable">amp</span>;&<span class="variable">amp</span>; <span class="variable">options</span>.<span class="variable">port</span>) || <span class="number integer">8208</span> });
+
+  <span class="this">this</span>.<span class="variable">description</span> = <span class="string">'Sescure and reliable session store using a SessionVOC'</span>;
+  <span class="this">this</span>.<span class="variable">datainfo</span> = <span class="keyword">null</span>;
 };</code></pre>
 </td>
 </tr>
 <tr class="code">
 <td class="docs">
-<p>Inherit from <code>Store</code>.
+<p>Inherit from <code>Store.prototype</code>.
  </p>
 </td>
 <td class="code">
-<pre><code><span class="class">RedisStore</span>.<span class="variable">prototype</span>.<span class="variable">__proto__</span> = <span class="class">Store</span>.<span class="variable">prototype</span>;</code></pre>
+<pre><code><span class="class">SessionVocStore</span>.<span class="variable">prototype</span>.<span class="variable">__proto__</span> = <span class="class">Store</span>.<span class="variable">prototype</span>;</code></pre>
 </td>
 </tr>
 <tr class="code">
 <td class="docs">
-<p>Attempt to fetch session by the given <code>hash</code>.</p>
+<p>Creates a new session.</p>
 
 <h2></h2>
 
-<ul><li><p><strong>param</strong>: <em>String</em>  hash</p></li><li><p><strong>param</strong>: <em>Function</em>  fn</p></li><li><p><strong>api</strong>: <em>public</em></p></li></ul>
+<ul><li><p><strong>param</strong>: <em>function</em>  next</p></li></ul>
 </td>
 <td class="code">
-<pre><code><span class="class">RedisStore</span>.<span class="variable">prototype</span>.<span class="variable">get</span> = <span class="keyword">function</span>(<span class="variable">hash</span>, <span class="variable">fn</span>){
-    <span class="this">this</span>.<span class="variable">client</span>.<span class="variable">get</span>(<span class="variable">hash</span>, <span class="keyword">function</span>(<span class="variable">err</span>, <span class="variable">data</span>){
-        <span class="keyword">try</span> {
-            <span class="variable">fn</span>(<span class="keyword">null</span>, <span class="variable">data</span>
-                ? <span class="class">JSON</span>.<span class="variable">parse</span>(<span class="variable">data</span>.<span class="variable">toString</span>())
-                : <span class="variable">data</span>);
-        } <span class="keyword">catch</span> (<span class="variable">err</span>) {
-            <span class="variable">fn</span>(<span class="variable">err</span>);
-        } 
-    });
+<pre><code><span class="class">SessionVocStore</span>.<span class="variable">prototype</span>.<span class="variable">createSession</span> = <span class="keyword">function</span> (<span class="variable">next</span>) {
+  <span class="keyword">var</span> <span class="variable">host</span> = <span class="this">this</span>.<span class="variable">host</span>;
+  <span class="keyword">var</span> <span class="variable">port</span> = <span class="this">this</span>.<span class="variable">port</span>;
+
+  <span class="variable">debuglog</span>(<span class="string">'createSession('</span> + <span class="variable">host</span> + <span class="string">', '</span> + <span class="variable">port</span> + <span class="string">')'</span>);
+
+  <span class="variable">checkDatainfo</span>(<span class="this">this</span>, <span class="variable">next</span>,
+                <span class="keyword">function</span> () {
+                  <span class="variable">sessionvocRequest</span>(<span class="variable">svo</span>(<span class="variable">host</span>, <span class="variable">port</span>, <span class="string">'/session'</span>, <span class="string">'POST'</span>), <span class="keyword">null</span>, <span class="variable">next</span>);
+                });
 };</code></pre>
 </td>
 </tr>
 <tr class="code">
 <td class="docs">
-<p>Commit the given <code>sess</code> object associated with the given <code>hash</code>.</p>
+<p>Loads an existing session.</p>
 
 <h2></h2>
 
-<ul><li><p><strong>param</strong>: <em>String</em>  hash</p></li><li><p><strong>param</strong>: <em>Session</em>  sess</p></li><li><p><strong>param</strong>: <em>Function</em>  fn</p></li><li><p><strong>api</strong>: <em>public</em></p></li></ul>
+<ul><li><p><strong>param</strong>: <em>function</em>  next</p></li></ul>
 </td>
 <td class="code">
-<pre><code><span class="class">RedisStore</span>.<span class="variable">prototype</span>.<span class="variable">set</span> = <span class="keyword">function</span>(<span class="variable">hash</span>, <span class="variable">sess</span>, <span class="variable">fn</span>){
-    <span class="keyword">var</span> <span class="variable">self</span> = <span class="this">this</span>;
-    <span class="keyword">try</span> {
-        <span class="this">this</span>.<span class="variable">client</span>.<span class="variable">set</span>(<span class="variable">hash</span>, <span class="class">JSON</span>.<span class="variable">stringify</span>(<span class="variable">sess</span>), <span class="keyword">function</span>(){
-            <span class="variable">self</span>.<span class="variable">client</span>.<span class="variable">expire</span>(<span class="variable">hash</span>, <span class="variable">self</span>.<span class="variable">maxAge</span> / <span class="number integer">1000</span> | <span class="number integer">0</span>);
-            <span class="variable">fn</span> &<span class="variable">amp</span>;&<span class="variable">amp</span>; <span class="variable">fn</span>.<span class="variable">apply</span>(<span class="this">this</span>, <span class="variable">arguments</span>);
-        });
-    } <span class="keyword">catch</span> (<span class="variable">err</span>) {
-        <span class="variable">fn</span> &<span class="variable">amp</span>;&<span class="variable">amp</span>; <span class="variable">fn</span>(<span class="variable">err</span>);
-    } 
+<pre><code><span class="class">SessionVocStore</span>.<span class="variable">prototype</span>.<span class="variable">loadSession</span> = <span class="keyword">function</span> (<span class="variable">sid</span>, <span class="variable">next</span>) {
+  <span class="keyword">var</span> <span class="variable">host</span> = <span class="this">this</span>.<span class="variable">host</span>;
+  <span class="keyword">var</span> <span class="variable">port</span> = <span class="this">this</span>.<span class="variable">port</span>;
+
+  <span class="variable">debuglog</span>(<span class="string">'loadSession('</span> + <span class="variable">sid</span> + <span class="string">', '</span> + <span class="variable">host</span> + <span class="string">', '</span> + <span class="variable">port</span> + <span class="string">')'</span>);
+
+  <span class="variable">checkDatainfo</span>(<span class="this">this</span>, <span class="variable">next</span>,
+                <span class="keyword">function</span> () {
+                  <span class="variable">sessionvocRequest</span>(<span class="variable">svo</span>(<span class="variable">host</span>, <span class="variable">port</span>, <span class="string">'/session/'</span> + <span class="variable">sid</span>, <span class="string">'GET'</span>),  <span class="keyword">null</span>, <span class="variable">next</span>);
+                });
 };</code></pre>
 </td>
 </tr>
 <tr class="code">
 <td class="docs">
-<p>Destroy the session associated with the given <code>hash</code>.</p>
+<p>Updates an existing session.</p>
 
 <h2></h2>
 
-<ul><li><p><strong>param</strong>: <em>String</em>  hash</p></li><li><p><strong>api</strong>: <em>public</em></p></li></ul>
+<ul><li><p><strong>param</strong>: <em>function</em>  data</p></li><li><p><strong>param</strong>: <em>function</em>  next</p></li></ul>
 </td>
 <td class="code">
-<pre><code><span class="class">RedisStore</span>.<span class="variable">prototype</span>.<span class="variable">destroy</span> = <span class="keyword">function</span>(<span class="variable">hash</span>, <span class="variable">fn</span>){
-    <span class="this">this</span>.<span class="variable">client</span>.<span class="variable">del</span>(<span class="variable">hash</span>, <span class="variable">fn</span>);
+<pre><code><span class="class">SessionVocStore</span>.<span class="variable">prototype</span>.<span class="variable">updateSession</span> = <span class="keyword">function</span> (<span class="variable">sid</span>, <span class="variable">data</span>, <span class="variable">next</span>) {
+  <span class="keyword">var</span> <span class="variable">host</span> = <span class="this">this</span>.<span class="variable">host</span>;
+  <span class="keyword">var</span> <span class="variable">port</span> = <span class="this">this</span>.<span class="variable">port</span>;
+
+  <span class="variable">debuglog</span>(<span class="string">'updateSession('</span> + <span class="variable">sid</span> + <span class="string">', '</span> + <span class="variable">host</span> + <span class="string">', '</span> + <span class="variable">port</span> + <span class="string">')'</span>);
+
+  <span class="variable">checkDatainfo</span>(<span class="this">this</span>, <span class="variable">next</span>,
+                <span class="keyword">function</span> () {
+                  <span class="variable">sessionvocRequest</span>(<span class="variable">svo</span>(<span class="variable">host</span>, <span class="variable">port</span>, <span class="string">'/session/'</span> + <span class="variable">sid</span>, <span class="string">'PUT'</span>), <span class="class">JSON</span>.<span class="variable">stringify</span>(<span class="variable">data</span>), <span class="variable">next</span>);
+                });
 };</code></pre>
 </td>
 </tr>
 <tr class="code">
 <td class="docs">
-<p>Fetch number of sessions.</p>
+<p>Deletes an existing session.</p>
 
 <h2></h2>
 
-<ul><li><p><strong>param</strong>: <em>Function</em>  fn</p></li><li><p><strong>api</strong>: <em>public</em></p></li></ul>
+<ul><li><p><strong>param</strong>: <em>function</em>  next</p></li></ul>
 </td>
 <td class="code">
-<pre><code><span class="class">RedisStore</span>.<span class="variable">prototype</span>.<span class="variable">length</span> = <span class="keyword">function</span>(<span class="variable">fn</span>){
-    <span class="this">this</span>.<span class="variable">client</span>.<span class="variable">dbsize</span>(<span class="variable">fn</span>);
+<pre><code><span class="class">SessionVocStore</span>.<span class="variable">prototype</span>.<span class="variable">deleteSession</span> = <span class="keyword">function</span> (<span class="variable">sid</span>, <span class="variable">next</span>) {
+  <span class="keyword">var</span> <span class="variable">host</span> = <span class="this">this</span>.<span class="variable">host</span>;
+  <span class="keyword">var</span> <span class="variable">port</span> = <span class="this">this</span>.<span class="variable">port</span>;
+
+  <span class="variable">debuglog</span>(<span class="string">'deleteSession('</span> + <span class="variable">sid</span> + <span class="string">', '</span> + <span class="variable">host</span> + <span class="string">', '</span> + <span class="variable">port</span> + <span class="string">')'</span>);
+
+  <span class="variable">checkDatainfo</span>(<span class="this">this</span>, <span class="variable">next</span>,
+                <span class="keyword">function</span> () {
+                  <span class="variable">sessionvocRequest</span>(<span class="variable">svo</span>(<span class="variable">host</span>, <span class="variable">port</span>, <span class="string">'/session/'</span> + <span class="variable">sid</span>, <span class="string">'DELETE'</span>), <span class="keyword">null</span>, <span class="variable">next</span>);
+                });
 };</code></pre>
 </td>
 </tr>
 <tr class="code">
 <td class="docs">
-<p>Clear all sessions.</p>
+<p>Logs in a session.</p>
 
 <h2></h2>
 
-<ul><li><p><strong>param</strong>: <em>Function</em>  fn</p></li><li><p><strong>api</strong>: <em>public</em></p></li></ul>
+<ul><li><p><strong>param</strong>: <em>function</em>  username</p></li><li><p><strong>param</strong>: <em>function</em>  password</p></li><li><p><strong>param</strong>: <em>function</em>  next</p></li></ul>
 </td>
 <td class="code">
-<pre><code><span class="class">RedisStore</span>.<span class="variable">prototype</span>.<span class="variable">clear</span> = <span class="keyword">function</span>(<span class="variable">fn</span>){
-    <span class="this">this</span>.<span class="variable">client</span>.<span class="variable">flushdb</span>(<span class="variable">fn</span>);
+<pre><code><span class="class">SessionVocStore</span>.<span class="variable">prototype</span>.<span class="variable">login</span> = <span class="keyword">function</span> (<span class="variable">sid</span>, <span class="variable">username</span>, <span class="variable">password</span>, <span class="variable">next</span>) {
+  <span class="keyword">var</span> <span class="variable">host</span> = <span class="this">this</span>.<span class="variable">host</span>;
+  <span class="keyword">var</span> <span class="variable">port</span> = <span class="this">this</span>.<span class="variable">port</span>;
+
+  <span class="variable">debuglog</span>(<span class="string">'login('</span> + <span class="variable">sid</span> + <span class="string">', '</span> + <span class="variable">username</span> + <span class="string">', ..., '</span> + <span class="variable">host</span> + <span class="string">', '</span> + <span class="variable">port</span> + <span class="string">')'</span>);
+
+  <span class="variable">sessionvocRequest</span>(<span class="variable">svo</span>(<span class="variable">host</span>, <span class="variable">port</span>, <span class="string">'/session/'</span> + <span class="variable">sid</span> + <span class="string">'/authenticate'</span>, <span class="string">'PUT'</span>),
+                    <span class="class">JSON</span>.<span class="variable">stringify</span>({ <span class="string">'uid'</span> : <span class="variable">username</span>, <span class="string">'password'</span> : <span class="variable">password</span> }),
+                    <span class="variable">next</span>);
+}</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Logs out a session.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>function</em>  username</p></li><li><p><strong>param</strong>: <em>function</em>  password</p></li><li><p><strong>param</strong>: <em>function</em>  next</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="class">SessionVocStore</span>.<span class="variable">prototype</span>.<span class="variable">logout</span> = <span class="keyword">function</span> (<span class="variable">sid</span>, <span class="variable">next</span>) {
+  <span class="keyword">var</span> <span class="variable">host</span> = <span class="this">this</span>.<span class="variable">host</span>;
+  <span class="keyword">var</span> <span class="variable">port</span> = <span class="this">this</span>.<span class="variable">port</span>;
+
+  <span class="variable">debuglog</span>(<span class="string">'login('</span> + <span class="variable">sid</span> + <span class="string">', '</span> + <span class="variable">host</span> + <span class="string">', '</span> + <span class="variable">port</span> + <span class="string">')'</span>);
+
+  <span class="variable">sessionvocRequest</span>(<span class="variable">svo</span>(<span class="variable">host</span>, <span class="variable">port</span>, <span class="string">'/session/'</span> + <span class="variable">sid</span> + <span class="string">'/logout'</span>, <span class="string">'PUT'</span>), <span class="keyword">null</span>, <span class="variable">next</span>);
+}
+
+<span class="comment">////////////////////////////////////////////////////////////////////////////////</span>
+<span class="comment">// Helper functions</span>
+<span class="comment">////////////////////////////////////////////////////////////////////////////////</span></code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Log informational output if debug flag is set.
+ </p>
+</td>
+<td class="code">
+<pre><code><span class="keyword">function</span> <span class="variable">debuglog</span> (<span class="variable">msg</span>) {
+  <span class="keyword">if</span> (<span class="variable">exports</span>.<span class="variable">debug</span>) {
+    <span class="variable">console</span>.<span class="variable">log</span>(<span class="string">'[sessionvoc] '</span> + <span class="variable">msg</span>);
+  }
+}</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Helper function to create options for the http.request call.
+ </p>
+</td>
+<td class="code">
+<pre><code><span class="keyword">function</span> <span class="variable">svo</span> (<span class="variable">host</span>, <span class="variable">port</span>, <span class="variable">path</span>, <span class="variable">method</span>) {
+  <span class="keyword">return</span> {
+    <span class="variable">host</span>: <span class="variable">host</span>,
+    <span class="variable">port</span>: <span class="variable">port</span>,
+    <span class="variable">path</span>: <span class="variable">path</span>,
+    <span class="variable">method</span>: <span class="variable">method</span>,
+    <span class="variable">headers</span>: {
+      <span class="string">'connection'</span>: <span class="string">'keep-alive'</span>,
+    }
+  };
+}</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>Calls the SessionVOC.</p>
+
+<p>This functions executes a request given by url with the body data. If the
+request is successfull, then the function work is called. If an error occurs
+the function next is called with the error is first argument.</p>
+
+<h2></h2>
+
+<ul><li><p><strong>param</strong>: <em>string</em>  url</p></li><li><p><strong>param</strong>: <em>Object</em>  data</p></li><li><p><strong>param</strong>: <em>Function</em>  callback</p></li><li><p><strong>param</strong>: <em>Function</em>  work</p></li></ul>
+</td>
+<td class="code">
+<pre><code><span class="keyword">var</span> <span class="variable">sessionvocRequest</span> = <span class="keyword">function</span> (<span class="variable">url</span>, <span class="variable">data</span>, <span class="variable">next</span>, <span class="variable">work</span>) {
+  <span class="variable">debuglog</span>(<span class="string">'sessionvocRequest: '</span> + <span class="class">JSON</span>.<span class="variable">stringify</span>(<span class="variable">url</span>));
+
+  <span class="keyword">if</span> (<span class="variable">data</span>) {
+    <span class="variable">url</span>.<span class="variable">headers</span>[<span class="string">'content-length'</span>] = <span class="variable">data</span>.<span class="variable">length</span>;
+  }
+  <span class="keyword">else</span> {
+    <span class="variable">url</span>.<span class="variable">headers</span>[<span class="string">'content-length'</span>] = <span class="number integer">0</span>;
+  }
+
+  <span class="keyword">var</span> <span class="variable">req</span> = <span class="variable">http</span>.<span class="variable">request</span>(<span class="variable">url</span>, 
+                         <span class="keyword">function</span> (<span class="variable">res</span>) {
+                           <span class="keyword">var</span> <span class="variable">body</span> = <span class="string">''</span>;
+
+                           <span class="variable">res</span>.<span class="variable">setEncoding</span>(<span class="string">'utf8'</span>);
+
+                           <span class="variable">res</span>.<span class="variable">on</span>(<span class="string">'error'</span>,
+                                  <span class="keyword">function</span> (<span class="variable">err</span>) {
+                                    <span class="variable">debuglog</span>(<span class="string">'ERROR (http request): '</span> + <span class="class">JSON</span>.<span class="variable">stringify</span>(<span class="variable">err</span>));
+                                    <span class="variable">next</span>(<span class="variable">err</span>);
+                                  });
+
+                           <span class="variable">res</span>.<span class="variable">on</span>(<span class="string">'data'</span>,
+                                  <span class="keyword">function</span> (<span class="variable">chunk</span>) {
+                                    <span class="variable">body</span> += <span class="variable">chunk</span>;
+                                  });
+  
+                           <span class="variable">res</span>.<span class="variable">on</span>(<span class="string">'end'</span>, <span class="keyword">function</span> (<span class="variable">chunk</span>) {
+                                    <span class="variable">debuglog</span>(<span class="string">'response: '</span> + <span class="variable">body</span>);
+                                    <span class="variable">debuglog</span>(<span class="string">'status code: '</span> + <span class="variable">res</span>.<span class="variable">statusCode</span>);
+
+                                    <span class="keyword">var</span> <span class="variable">data</span>;
+
+                                    <span class="keyword">try</span> {
+                                      <span class="variable">data</span> = <span class="class">JSON</span>.<span class="variable">parse</span>(<span class="variable">body</span>);
+                                    }
+                                    <span class="keyword">catch</span> (<span class="variable">err</span>) {
+                                      <span class="variable">debuglog</span>(<span class="string">'ERROR (parsing body): '</span> + <span class="class">JSON</span>.<span class="variable">stringify</span>(<span class="variable">err</span>));
+                                      <span class="variable">debuglog</span>(<span class="string">'body was: '</span> + <span class="variable">body</span>);
+                                      <span class="variable">next</span>(<span class="variable">err</span>);
+                                      <span class="keyword">return</span>;
+                                    }
+
+                                    <span class="keyword">try</span> {
+                                      <span class="keyword">if</span> (<span class="variable">res</span>.<span class="variable">statusCode</span> == <span class="number integer">200</span>) {
+                                        <span class="keyword">if</span> (<span class="variable">work</span>) {
+                                          <span class="variable">work</span>(<span class="variable">data</span>);
+                                        }
+                                        <span class="keyword">else</span> {
+                                          <span class="variable">next</span>(<span class="keyword">null</span>, <span class="variable">data</span>);
+                                        }
+                                      }
+                                      <span class="keyword">else</span> {
+                                        <span class="variable">next</span>(<span class="variable">data</span>);
+                                      }
+                                    }
+                                    <span class="keyword">catch</span> (<span class="variable">err</span>) {
+                                      <span class="variable">debuglog</span>(<span class="string">'ERROR (callback): '</span> + <span class="class">JSON</span>.<span class="variable">stringify</span>(<span class="variable">err</span>));
+                                      <span class="variable">next</span>(<span class="variable">err</span>);
+                                      <span class="keyword">return</span>;
+                                    }
+                                  });
+                         });
+
+  <span class="variable">req</span>.<span class="variable">on</span>(<span class="string">'error'</span>,
+         <span class="keyword">function</span> (<span class="variable">err</span>) {
+           <span class="variable">debuglog</span>(<span class="string">'ERROR (connect): '</span> + <span class="class">JSON</span>.<span class="variable">stringify</span>(<span class="variable">err</span>));
+           <span class="variable">next</span>(<span class="variable">err</span>);
+         });
+
+  <span class="keyword">if</span> (<span class="variable">data</span>) {
+    <span class="variable">debuglog</span>(<span class="string">'sessionvocRequest body: '</span> + <span class="class">JSON</span>.<span class="variable">stringify</span>(<span class="variable">data</span>));
+    <span class="variable">req</span>.<span class="variable">write</span>(<span class="variable">data</span>);
+  }
+
+  <span class="variable">req</span>.<span class="variable">end</span>();
 };</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>load the session datainfo
+ </p>
+</td>
+<td class="code">
+<pre><code><span class="keyword">function</span> <span class="variable">loadInformation</span> (<span class="variable">store</span>, <span class="variable">next</span>) {
+  <span class="variable">debuglog</span>(<span class="string">'loadInformation('</span> + <span class="variable">store</span>.<span class="variable">host</span> + <span class="string">', '</span> + <span class="variable">store</span>.<span class="variable">port</span> + <span class="string">')'</span>);
+
+  <span class="variable">sessionvocRequest</span>(<span class="variable">svo</span>(<span class="variable">store</span>.<span class="variable">host</span>, <span class="variable">store</span>.<span class="variable">port</span>, <span class="string">'/datainfo'</span>, <span class="string">'GET'</span>), <span class="keyword">null</span>, <span class="variable">next</span>,
+                    <span class="keyword">function</span> (<span class="variable">data</span>) {
+                      <span class="variable">store</span>.<span class="variable">datainfo</span> = <span class="variable">data</span>;
+                      <span class="variable">next</span>();
+                    });
+};</code></pre>
+</td>
+</tr>
+<tr class="code">
+<td class="docs">
+<p>check if we need to load the session datainfo
+ </p>
+</td>
+<td class="code">
+<pre><code><span class="keyword">function</span> <span class="variable">checkDatainfo</span> (<span class="variable">store</span>, <span class="variable">next</span>, <span class="variable">work</span>) {
+
+  <span class="keyword">if</span> (<span class="variable">store</span>.<span class="variable">datainfo</span>) {
+    <span class="variable">work</span>();
+  }
+  <span class="keyword">else</span> {
+    <span class="variable">debuglog</span>(<span class="string">'checkDatainfo: datainfo must be loaded'</span>);
+    <span class="variable">loadInformation</span>(<span class="variable">store</span>,
+                    <span class="keyword">function</span> (<span class="variable">err</span>) {
+                      <span class="variable">err</span> ? <span class="variable">next</span>(<span class="variable">err</span>) : <span class="variable">work</span>();
+                    });
+  }
+};
+</code></pre>
 </td>
 </tr>	</body>
 </html></tbody></table>
