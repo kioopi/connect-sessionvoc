@@ -31,7 +31,6 @@ module.exports = {
   },
 
 
-
   /*
   'test.crud': function() {
     create1(store1,
@@ -53,6 +52,9 @@ module.exports = {
 
                                                           delete1(store1, session.sid,
                                                                   function(result) {
+                                                                    read2(store1, session.sid,
+                                                                          function() {
+                                                                          });
                                                                   });
                                                         });
                                                 });
@@ -71,7 +73,6 @@ module.exports = {
             assert.equal(session.error, true);
           });
   },
-  */
 
 
 
@@ -82,9 +83,36 @@ module.exports = {
                      function(session) {
                        logout1(store1, sid,
                                function(session) {
-                                 console.log("############## " + JSON.stringify(session));
                                });
                      });
+            });
+  },
+  */
+
+  'test.read-form': function() {
+    create1(store1, function(sid) {
+              fcreate1(store1, sid,
+                       function(sid, fid) {
+                         fread1(store1, sid, fid,
+                                function(form) {
+                                  assert.equal(form, 'TEST FORM DATA');
+
+                                  fupdate1(store1, sid, fid,
+                                           function(sid, fid) {
+                                             fread1(store1, sid, fid,
+                                                    function(form) {
+                                                      assert.equal(form, 'NEW TEST DATA');
+
+                                                      fdelete1(store1, sid, fid,
+                                                               function(result) {
+                                                                 fread2(store1, sid, fid,
+                                                                        function() {
+                                                                        });
+                                                               });
+                                                    });
+                                           });
+                                });
+                       });
             });
   }
 };
@@ -99,7 +127,7 @@ function create1 (store, next) {
                         assert.isNotNull(result);
                         assert.isNotNull(result.sid);
                         
-                        console.log('[SUCCESS] created session: ' + JSON.stringify(result.sid));
+                        console.log('[SUCCESS] created session: ' + result.sid);
                         
                         next(result.sid);
                       });
@@ -111,7 +139,7 @@ function read1 (store, sid, next) {
   store.loadSession(sid, function(err, result) {
                       assert.isNull(err);
                       assert.isNotNull(result);
-                      assert.isNotNull(result.sid);
+
                       assert.equal(result.sid, sid);
                       
                       console.log('[SUCCESS] read session: ' + result.sid);
@@ -140,7 +168,7 @@ function update1 (store, sid, next) {
   store.updateSession(sid, n, function(err, result) {
                         assert.isNull(err);
                         assert.isNotNull(result);
-                        assert.isNotNull(result.sid);
+
                         assert.equal(result.sid, sid);
                         assert.equal(result.transData.message, 'Test Message');
                         
@@ -158,7 +186,7 @@ function update2 (store, sid, next) {
   store.updateSession(sid, n, function(err, result) {
                         assert.isNull(err);
                         assert.isNotNull(result);
-                        assert.isNotNull(result.sid);
+
                         assert.equal(result.sid, sid);
                         assert.equal(result.transData.message, '');
                         
@@ -209,3 +237,79 @@ function logout1 (store, sid, next) {
               });
 };
     
+
+
+function fcreate1 (store, sid, next) {
+  store.createFormdata(sid, 'TEST FORM DATA', function(err, result) {
+                         assert.isNull(err);
+                         assert.isNotNull(result);
+                         assert.isNotNull(result.fid);
+
+                         assert.equal(result.sid, sid);
+                         
+                         console.log('[SUCCESS] created form data: ' + JSON.stringify(result));
+                         
+                         next(result.sid, result.fid);
+                       });
+}
+
+
+
+function fread1 (store, sid, fid, next) {
+  store.loadFormdata(sid, fid, function(err, result) {
+                       assert.isNull(err);
+                       assert.isNotNull(result);
+                       
+                       console.log('[SUCCESS] read form data: ' + result);
+                       
+                       next(result);
+                     });
+};
+
+
+
+function fread2 (store, sid, fid, next) {
+  store.loadFormdata(sid, fid, function(err, result) {
+                       assert.isNotNull(err);
+                       
+                       console.log('[SUCCESS] read form data failed: ' + JSON.stringify(err));
+                       
+                       next(err);
+                     });
+};
+
+
+
+function fupdate1 (store, sid, fid, next) {
+  var n = 'NEW TEST DATA';
+      
+  store.updateFormdata(sid, fid, n, function(err, result) {
+                         assert.isNull(err);
+                         assert.isNotNull(result);
+
+                         assert.equal(result.sid, sid);
+                         assert.equal(result.fid, fid);
+                         assert.equal(result.updated, true);
+                         
+                         console.log('[SUCCESS] update form data: ' + result.fid);
+                         
+                         next(result.sid, result.fid);
+                       });
+};
+
+
+
+function fdelete1 (store, sid, fid, next) {
+  store.deleteFormdata(sid, fid, function(err, result) {
+                         assert.isNull(err);
+                         assert.isNotNull(result);
+                         assert.equal(result.deleted, true);
+                         
+                         console.log('[SUCCESS] delete form data: ' + sid);
+                         
+                         next(result);
+                       });
+};
+
+
+
