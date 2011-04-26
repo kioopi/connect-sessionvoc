@@ -17,9 +17,9 @@ via npm:
 ## Example
 
     var connect = require('connect')
-      , SessionVOC = require('connect-sessionvoc');
+      , svoc = require('connect-sessionvoc');
 
     connect.createServer(
       connect.cookieDecoder(),
-      connect.session({ store: new SessionVOC({ host: 'session-server' }) })
+      connect.session({ store: new svoc.SessionVocStore({ host: 'session-server' }) })
     );
