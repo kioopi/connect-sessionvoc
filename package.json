@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "author": "Frank Celler <f.celler@triagens.de>",
   "main": "./index.js",
-  "dependencies": {},
+  "dependencies": {
+    "sessionvoc-client": ">=1.0.0" 
+  },
   "engines": { "node": ">= 0.1.98" }
 }

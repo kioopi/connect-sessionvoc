@@ -3,6 +3,8 @@
 connect-sessionvoc is a session store using a secure, reliable, external session
 database, the SessionVOC (see https://github.com/triAGENS/SessionVoc-OPEN).
 
+This is dependend on the fork of senchalabs/connect at  https://github.com/triAGENS/connect
+
 ## Installation
 
 via npm:
